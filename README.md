@@ -1,6 +1,6 @@
 # AWS Python Sample
 
-A sample Python FastAPI application designed for deployment to AWS ECS using containers.
+A sample python FastAPI application designed for deployment to AWS ECS using containers.
 
 ## Features
 
@@ -28,7 +28,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 2. Install dependencies:
 ```bash
-uv pip install --dev
+uv sync --dev
 ```
 
 3. Run the application:
