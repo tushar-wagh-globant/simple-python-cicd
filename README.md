@@ -28,7 +28,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 2. Install dependencies:
 ```bash
-uv pip install --dev
+uv sync --dev
 ```
 
 3. Run the application:
