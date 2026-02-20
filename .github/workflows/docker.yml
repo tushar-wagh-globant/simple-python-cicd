@@ -8,30 +8,30 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: aws-python-sample
-  ECS_SERVICE: aws-python-sample-service
-  ECS_CLUSTER: aws-python-sample-cluster
-  ECS_TASK_DEFINITION: .aws/task-definition.json
-  CONTAINER_NAME: aws-python-sample
+  ECR_REPOSITORY_NAME: aws-python-sample
+  ECS_SERVICE_NAME: aws-python-sample-service
+  ECS_CLUSTER_NAME: aws-python-sample-cluster
+  TASK_DEFINITION_FILE: .aws/task-definition.json
+  APP_CONTAINER_NAME: aws-python-sample
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.12"
-    
-- name: Install uv
+
+    - name: Install uv
       uses: astral-sh/setup-uv@v3
-      
+
     - name: Install dependencies
       run: uv sync --dev
-    
+
     - name: Run tests
       run: uv run pytest
 
@@ -39,45 +39,45 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
-    
+
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
-    
+
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY_NAME:latest .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_NAME:latest
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-    
+
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v2
       with:
-        task-definition: ${{ env.ECS_TASK_DEFINITION }}
-        container-name: ${{ env.CONTAINER_NAME }}
+        task-definition: ${{ env.TASK_DEFINITION_FILE }}
+        container-name: ${{ env.APP_CONTAINER_NAME }}
         image: ${{ steps.build-image.outputs.image }}
-    
+
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ env.ECS_SERVICE }}
-        cluster: ${{ env.ECS_CLUSTER }}
+        service: ${{ env.ECS_SERVICE_NAME }}
+        cluster: ${{ env.ECS_CLUSTER_NAME }}
         wait-for-service-stability: true
