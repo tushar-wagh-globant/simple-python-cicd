@@ -42,3 +42,9 @@ target-version = ['py312']
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+]
