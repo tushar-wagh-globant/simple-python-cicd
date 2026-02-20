@@ -27,6 +27,9 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py312"
@@ -39,3 +42,9 @@ target-version = ['py312']
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+]
