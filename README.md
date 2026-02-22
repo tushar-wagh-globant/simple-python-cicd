@@ -1,4 +1,4 @@
-# AWS Python Sample
+# AWS Python sample
 
 A sample python FastAPI application designed for deployment to AWS ECS using containers.
 
