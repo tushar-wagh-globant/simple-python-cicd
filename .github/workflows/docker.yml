@@ -2,9 +2,13 @@ name: Build and Deploy to AWS ECS
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]  # Only deploy on main, not develop
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC token
 
 env:
   AWS_REGION: us-east-1
@@ -17,14 +21,18 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.12"
+        cache: 'uv'  # Cache dependencies
 
     - name: Install uv
       uses: astral-sh/setup-uv@v3
@@ -33,12 +41,17 @@ jobs:
       run: uv sync --dev
 
     - name: Run tests
-      run: uv run pytest
+      run: uv run pytest --verbose
 
   build-and-deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    environment: 
+      name: production  # Requires manual approval before deployment
+      url: https://console.aws.amazon.com/ecs
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
     - name: Checkout
@@ -61,10 +74,13 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY_NAME:latest .
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG \
+                     -t $ECR_REGISTRY/$ECR_REPOSITORY_NAME:latest .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_NAME:latest
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        # Mask sensitive registry information in logs
+        echo "::add-mask::$ECR_REGISTRY"
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
@@ -81,3 +97,11 @@ jobs:
         service: ${{ env.ECS_SERVICE_NAME }}
         cluster: ${{ env.ECS_CLUSTER_NAME }}
         wait-for-service-stability: true
+
+    - name: Deployment Summary
+      if: success()
+      run: |
+        echo "✅ Deployment completed successfully"
+        echo "Service: ${{ env.ECS_SERVICE_NAME }}"
+        echo "Cluster: ${{ env.ECS_CLUSTER_NAME }}"
+        echo "Image Tag: ${{ github.sha }}"
