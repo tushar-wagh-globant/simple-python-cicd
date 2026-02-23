@@ -12,6 +12,7 @@ A sample python FastAPI application designed for deployment to AWS ECS using con
 - AWS ECS deployment
 - Uses `uv` as package manager
 
+
 ## Local Development
 
 ### Prerequisites
